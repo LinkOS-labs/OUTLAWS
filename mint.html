@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Mint OUTLAWS</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.12.0/dist/ethers.umd.min.js"></script>
 </head>
 <body>
 <div class="page-wrapper">
@@ -13,7 +14,7 @@
       <div class="logo-badge"></div>
       <div>
         <div class="nav-title"><span>OUTLAWS</span> / MONAD</div>
-        <div class="nav-sub">Mint</div>
+        <div class="nav-sub">Public Mint</div>
       </div>
     </div>
     <nav class="nav-links">
@@ -25,52 +26,195 @@
     </nav>
   </header>
 
-  <section class="section">
-    <h2 class="section-title">Mint the Gang</h2>
-    <p class="section-sub">
-      OUTLAWS mint and trade live on Magic Eden · Monad.
-      Connect your wallet there, choose your Outlaw and pull the trigger.
-    </p>
+  <main>
+    <section class="section">
+      <h2 class="section-title">Mint OUTLAWS</h2>
+      <p class="section-sub">
+        Connect any EVM wallet on Monad and mint directly from this page.
+      </p>
 
-    <div class="mint-card-outer" style="margin-top:24px;">
-      <div class="mint-card">
-        <div class="mint-label">Primary Mint</div>
-        <p style="font-size:14px; color:var(--text-soft); line-height:1.6;">
-          The safest way to mint is directly through
-          <strong>Magic Eden</strong> using your Monad-enabled wallet.
-          Make sure the URL and contract match:
-        </p>
-        <p style="font-size:13px; word-break:break-all;">
-          <strong>Collection:</strong><br>
-          <a href="https://magiceden.io/collections/monad/0x402363f85ee24e3a86927aae6476fc16370672f4"
-             target="_blank">
-            https://magiceden.io/collections/monad/0x402363f85ee24e3a86927aae6476fc16370672f4
-          </a>
-        </p>
+      <!-- SUPPLY -->
+      <div id="supply" class="supply" style="text-align:center;margin-bottom:18px;">
+        Loading supply…
+      </div>
 
-        <div style="margin-top:18px;">
-          <a class="btn-primary"
-             style="width:100%; text-align:center;"
-             href="https://magiceden.io/collections/monad/0x402363f85ee24e3a86927aae6476fc16370672f4"
-             target="_blank">
-            Mint on Magic Eden
-          </a>
-        </div>
+      <!-- MINT CARD -->
+      <div class="mint-card-outer">
+        <div class="mint-card">
 
-        <div style="margin-top:16px; font-size:12px; color:var(--text-soft);">
-          Always double-check the contract:
-          <a href="https://monadscan.com/address/0x402363f85ee24e3a86927aae6476fc16370672f4"
-             target="_blank">0x4023...72f4</a>.
+          <div class="mint-label">Quantity</div>
+          <input type="number" id="qty" class="mint-input" min="1" max="20" value="1">
+
+          <div style="margin-top:18px;">
+            <button id="connectBtn" class="btn-primary" style="width:100%;margin-bottom:8px;">
+              Connect Wallet
+            </button>
+            <button id="mintBtn" class="btn-outline" style="width:100%;" disabled>
+              Mint
+            </button>
+          </div>
+
+          <div id="status" class="status" style="margin-top:14px;">
+            Status: Idle
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+
+      <div class="info-box">
+        <div style="font-size:13px; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:6px;">
+          Contract
+        </div>
+        <a href="https://monadscan.com/address/0x402363f85ee24e3a86927aae6476fc16370672f4"
+           target="_blank">
+          0x4023...72f4
+        </a>
+      </div>
+    </section>
+  </main>
 
   <footer class="footer">
-    <div>Contract: <a href="https://monadscan.com/address/0x402363f85ee24e3a86927aae6476fc16370672f4" target="_blank">0x4023...72f4</a></div>
-    <div>X: <a href="https://x.com/APUNKALYPSENOW" target="_blank">@APUNKALYPSENOW</a></div>
+    <div>
+      Contract:
+      <a href="https://monadscan.com/address/0x402363f85ee24e3a86927aae6476fc16370672f4"
+         target="_blank">0x4023...72f4</a>
+    </div>
+    <div>
+      X: <a href="https://x.com/APUNKALYPSENOW" target="_blank">@APUNKALYPSENOW</a>
+    </div>
   </footer>
 
 </div>
+
+<script>
+/* ---------------------------------------------
+   CONFIG
+---------------------------------------------- */
+
+const CONTRACT_ADDRESS = "0x402363f85ee24e3a86927aae6476fc16370672f4";
+const RPC_URL = "https://rpc.monad.xyz";   // universal monad RPC
+
+// ABI MÍNIMO necesario
+const ABI = [
+  "function mint(uint256 quantity) external payable",
+  "function MINT_PRICE() view returns (uint256)",
+  "function totalMinted() view returns (uint256)",
+  "function MAX_SUPPLY() view returns (uint256)"
+];
+
+function log(msg) {
+  document.getElementById("status").textContent = msg;
+}
+
+/* ---------------------------------------------
+   DETECTAR CUALQUIER WALLET
+---------------------------------------------- */
+function getAnyProvider() {
+  if (window.ethereum && Array.isArray(window.ethereum.providers)) {
+    const list = window.ethereum.providers;
+    const mm = list.find(p => p.isMetaMask);
+    if (mm) return mm;
+    const ph = list.find(p => p.isPhantom);
+    if (ph) return ph;
+    return list[0];
+  }
+  if (window.phantom && window.phantom.ethereum) return window.phantom.ethereum;
+  if (window.ethereum) return window.ethereum;
+  return null;
+}
+
+/* ---------------------------------------------
+   SUPPLY (LECTURA DESDE RPC)
+---------------------------------------------- */
+(async () => {
+  try {
+    const rpc = new ethers.JsonRpcProvider(RPC_URL);
+    const readC = new ethers.Contract(CONTRACT_ADDRESS, ABI, rpc);
+
+    const minted = await readC.totalMinted();
+    const max = await readC.MAX_SUPPLY();
+
+    document.getElementById("supply").textContent =
+      `Minted: ${minted.toString()} / ${max.toString()}`;
+  } catch (e) {
+    document.getElementById("supply").textContent = "Minted: ? / ?";
+  }
+})();
+
+/* ---------------------------------------------
+   GLOBALS
+---------------------------------------------- */
+let provider, signer, contract;
+
+/* ---------------------------------------------
+   CONNECT BUTTON
+---------------------------------------------- */
+document.getElementById("connectBtn").onclick = async () => {
+  try {
+    const injected = getAnyProvider();
+    if (!injected) {
+      log("⚠ No EVM wallet detected.");
+      return;
+    }
+
+    const acc = await injected.request({ method: "eth_requestAccounts" });
+    const wallet = acc[0];
+
+    provider = new ethers.BrowserProvider(injected);
+    signer = await provider.getSigner();
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+    let chainInfo = "";
+    try {
+      const net = await provider.getNetwork();
+      chainInfo = `\nChainId: ${net.chainId.toString()}`;
+    } catch (_) {}
+
+    log(`✅ Connected: ${wallet}${chainInfo}\nReady to mint.`);
+    document.getElementById("mintBtn").disabled = false;
+
+  } catch (err) {
+    log("❌ Connect error:\n" + (err.message || err));
+  }
+};
+
+/* ---------------------------------------------
+   MINT BUTTON
+---------------------------------------------- */
+document.getElementById("mintBtn").onclick = async () => {
+  try {
+    if (!contract) {
+      log("Connect wallet first.");
+      return;
+    }
+
+    const qty = parseInt(document.getElementById("qty").value);
+    if (!qty || qty < 1) {
+      log("Invalid quantity.");
+      return;
+    }
+
+    // PRICE
+    const price = await contract.MINT_PRICE();
+    const totalCost = price * BigInt(qty);
+
+    log("⏳ Sending mint transaction…");
+
+    const tx = await contract.mint(qty, {
+      value: totalCost,
+      gasLimit: 300000n * BigInt(qty)
+    });
+
+    log("⏳ Waiting confirmation...\nTx: " + tx.hash);
+    const receipt = await tx.wait();
+
+    log("✅ Mint confirmed!\nTx: " + receipt.hash);
+
+  } catch (err) {
+    log("❌ Mint error:\n" + (err.reason || err.message || err));
+  }
+};
+
+</script>
+
 </body>
 </html>
