@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Mint OUTLAWS</title>
+  <title>Mint OUTLAWS — Monad</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.12.0/dist/ethers.umd.min.js"></script>
 </head>
@@ -33,12 +33,10 @@
         Connect any EVM wallet on Monad and mint directly from this page.
       </p>
 
-      <!-- SUPPLY -->
-      <div id="supply" class="supply" style="text-align:center;margin-bottom:18px;">
+      <div id="supply" class="supply">
         Loading supply…
       </div>
 
-      <!-- MINT CARD -->
       <div class="mint-card-outer">
         <div class="mint-card">
 
@@ -61,13 +59,44 @@
       </div>
 
       <div class="info-box">
-        <div style="font-size:13px; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:6px;">
-          Contract
+
+        <div style="font-size:13px; text-transform:uppercase; letter-spacing:0.16em; margin-bottom:6px;">
+          Official OUTLAWS Links
         </div>
-        <a href="https://monadscan.com/address/0x402363f85ee24e3a86927aae6476fc16370672f4"
-           target="_blank">
-          0x4023...72f4
-        </a>
+
+        <p>
+          🔥 Announcement on X:<br>
+          <a href="https://x.com/APUNKALYPSENOW" target="_blank">
+            https://x.com/APUNKALYPSENOW
+          </a>
+        </p>
+
+        <p>
+          🌐 View on OpenSea:<br>
+          <a href="https://opensea.io/assets/monad/0x82712eabe817390Ad792699f1f5d4A62c3479968"
+             target="_blank">
+            OpenSea — OUTLAWS
+          </a>
+        </p>
+
+        <p>
+          💎 Magic Eden:<br>
+          <a href="https://magiceden.io/collections/monad/0x82712eabe817390Ad792699f1f5d4A62c3479968"
+             target="_blank">
+            Magic Eden — OUTLAWS
+          </a>
+        </p>
+
+        <p style="margin-top:18px;">
+          Contract:<br>
+          <a href="https://monadscan.com/address/0x82712eabe817390Ad792699f1f5d4A62c3479968"
+             target="_blank">0x8271...9968</a>
+          <br><br>
+          Deployer:<br>
+          <a href="https://monadscan.com/address/0x13cb67bb03277ce4326797283821aea7016d8a90"
+             target="_blank">0x13cb...8a90</a>
+        </p>
+
       </div>
     </section>
   </main>
@@ -75,25 +104,23 @@
   <footer class="footer">
     <div>
       Contract:
-      <a href="https://monadscan.com/address/0x402363f85ee24e3a86927aae6476fc16370672f4"
-         target="_blank">0x4023...72f4</a>
+      <a href="https://monadscan.com/address/0x82712eabe817390Ad792699f1f5d4A62c3479968"
+         target="_blank">0x8271...9968</a>
     </div>
     <div>
-      X: <a href="https://x.com/APUNKALYPSENOW" target="_blank">@APUNKALYPSENOW</a>
+      X:
+      <a href="https://x.com/APUNKALYPSENOW" target="_blank">@APUNKALYPSENOW</a>
     </div>
   </footer>
 
 </div>
 
 <script>
-/* ---------------------------------------------
-   CONFIG
----------------------------------------------- */
+/* CONFIG */
+const CONTRACT_ADDRESS = "0x82712eabe817390Ad792699f1f5d4A62c3479968";
+const RPC_URL = "https://rpc.monad.xyz";
 
-const CONTRACT_ADDRESS = "0x402363f85ee24e3a86927aae6476fc16370672f4";
-const RPC_URL = "https://rpc.monad.xyz";   // universal monad RPC
-
-// ABI MÍNIMO necesario
+// ABI mínimo
 const ABI = [
   "function mint(uint256 quantity) external payable",
   "function MINT_PRICE() view returns (uint256)",
@@ -101,119 +128,75 @@ const ABI = [
   "function MAX_SUPPLY() view returns (uint256)"
 ];
 
-function log(msg) {
-  document.getElementById("status").textContent = msg;
-}
+function log(msg){ document.getElementById("status").textContent = msg; }
 
-/* ---------------------------------------------
-   DETECTAR CUALQUIER WALLET
----------------------------------------------- */
-function getAnyProvider() {
+function getAnyProvider(){
   if (window.ethereum && Array.isArray(window.ethereum.providers)) {
-    const list = window.ethereum.providers;
-    const mm = list.find(p => p.isMetaMask);
-    if (mm) return mm;
-    const ph = list.find(p => p.isPhantom);
+    const m = window.ethereum.providers.find(p=>p.isMetaMask);
+    if (m) return m;
+    const ph = window.ethereum.providers.find(p=>p.isPhantom);
     if (ph) return ph;
-    return list[0];
+    return window.ethereum.providers[0];
   }
   if (window.phantom && window.phantom.ethereum) return window.phantom.ethereum;
   if (window.ethereum) return window.ethereum;
   return null;
 }
 
-/* ---------------------------------------------
-   SUPPLY (LECTURA DESDE RPC)
----------------------------------------------- */
-(async () => {
-  try {
+// LOAD SUPPLY
+(async()=>{
+  try{
     const rpc = new ethers.JsonRpcProvider(RPC_URL);
-    const readC = new ethers.Contract(CONTRACT_ADDRESS, ABI, rpc);
-
-    const minted = await readC.totalMinted();
-    const max = await readC.MAX_SUPPLY();
-
-    document.getElementById("supply").textContent =
-      `Minted: ${minted.toString()} / ${max.toString()}`;
-  } catch (e) {
+    const c = new ethers.Contract(CONTRACT_ADDRESS, ABI, rpc);
+    const minted = await c.totalMinted();
+    const max = await c.MAX_SUPPLY();
+    document.getElementById("supply").textContent = `Minted: ${minted} / ${max}`;
+  }catch(e){
     document.getElementById("supply").textContent = "Minted: ? / ?";
   }
 })();
 
-/* ---------------------------------------------
-   GLOBALS
----------------------------------------------- */
 let provider, signer, contract;
 
-/* ---------------------------------------------
-   CONNECT BUTTON
----------------------------------------------- */
-document.getElementById("connectBtn").onclick = async () => {
-  try {
+// CONNECT
+document.getElementById("connectBtn").onclick = async()=>{
+  try{
     const injected = getAnyProvider();
-    if (!injected) {
-      log("⚠ No EVM wallet detected.");
-      return;
-    }
+    if(!injected) return log("No EVM wallet detected.");
 
-    const acc = await injected.request({ method: "eth_requestAccounts" });
-    const wallet = acc[0];
-
+    const acc = await injected.request({method:"eth_requestAccounts"});
     provider = new ethers.BrowserProvider(injected);
-    signer = await provider.getSigner();
+    signer   = await provider.getSigner();
     contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
-    let chainInfo = "";
-    try {
-      const net = await provider.getNetwork();
-      chainInfo = `\nChainId: ${net.chainId.toString()}`;
-    } catch (_) {}
-
-    log(`✅ Connected: ${wallet}${chainInfo}\nReady to mint.`);
+    log(`Connected: ${acc[0]}\nReady to mint.`);
     document.getElementById("mintBtn").disabled = false;
 
-  } catch (err) {
-    log("❌ Connect error:\n" + (err.message || err));
+  }catch(err){
+    log("Connect error:\n"+(err.message || err));
   }
 };
 
-/* ---------------------------------------------
-   MINT BUTTON
----------------------------------------------- */
-document.getElementById("mintBtn").onclick = async () => {
-  try {
-    if (!contract) {
-      log("Connect wallet first.");
-      return;
-    }
-
+// MINT
+document.getElementById("mintBtn").onclick = async()=>{
+  try{
     const qty = parseInt(document.getElementById("qty").value);
-    if (!qty || qty < 1) {
-      log("Invalid quantity.");
-      return;
-    }
+    if(qty<1) return log("Invalid quantity.");
 
-    // PRICE
     const price = await contract.MINT_PRICE();
-    const totalCost = price * BigInt(qty);
+    const total = price * BigInt(qty);
 
-    log("⏳ Sending mint transaction…");
+    log("Sending mint tx…");
+    const tx = await contract.mint(qty,{ value: total, gasLimit:300000n*BigInt(qty) });
+    log("Waiting confirmation… Tx: "+tx.hash);
 
-    const tx = await contract.mint(qty, {
-      value: totalCost,
-      gasLimit: 300000n * BigInt(qty)
-    });
-
-    log("⏳ Waiting confirmation...\nTx: " + tx.hash);
     const receipt = await tx.wait();
+    log("Mint confirmed!\nTx: "+receipt.hash);
 
-    log("✅ Mint confirmed!\nTx: " + receipt.hash);
-
-  } catch (err) {
-    log("❌ Mint error:\n" + (err.reason || err.message || err));
+  }catch(err){
+    log("Mint error:\n"+(err.reason||err.message||err));
   }
 };
-
 </script>
 
 </body>
